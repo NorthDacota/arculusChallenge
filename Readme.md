@@ -1,5 +1,7 @@
 # Readme #
 
+I'm working on mistakes in a dev branch. I will not update the main branch because the challenge was restricted by time.
+
 **The script works only in Linux environment.**
 **Before usage install the GitLab library:** 
 ```commandline
