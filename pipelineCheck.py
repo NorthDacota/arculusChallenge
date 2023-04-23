@@ -9,7 +9,7 @@ import gitlab
 from pathlib import Path
 import argparse
 
-unic_pipelines = []
+unique_pipelines = []
 
 parser = argparse.ArgumentParser(description='\nUse arguments or default variables will be set\n'
           'The script shows statuses of the last pipelines in every branch of a project\n'
@@ -120,15 +120,6 @@ def failed_jobs_handler(job):
 
 
 # Print details about a slow job and send an issue about it. A job is considered slow if its time exceeds the set limit.
-def slow_jobs_handler(job):
-    print_job_stat(job)
-    print("    The job is slow: ", job.attributes['duration'] + "sec")
-    get_trace(job.id)
-    message = str(job.name) + ' at ' \
-              + str(job.stage) + " stage " + "is slow. Duration: " + str(job.attributes['duration'])
-    description = str(job.id) + " " + job.attributes['web_url']
-    report_problem(message, description)
-
 def slow_jobs_handler(job, pending=False):
     print_job_stat(job)
     if pending:
@@ -146,8 +137,8 @@ def slow_jobs_handler(job, pending=False):
 
 # It takes only the last pipeline in each branch and if the pipeline has a problem makes a report
 for pipeline in pipelines:
-    if pipeline.attributes['ref'] not in unic_pipelines:
-        unic_pipelines.append(pipeline.attributes['ref'])
+    if pipeline.attributes['ref'] not in unique_pipelines:
+        unique_pipelines.append(pipeline.attributes['ref'])
         print_pipe_stat(pipeline)
         # dive deeper if it's not successfully
         if pipeline.status != 'success':
