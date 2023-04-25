@@ -77,6 +77,7 @@ def get_project():
                 time.sleep(10)
             else:
                 connection_gitlab_monitor.labels(host=args.gitlab_host).set(1)
+                break
     # Check if the project is empty
     if len(my_project_data.pipelines.list(get_all=True)) == 0:
         print("There are no pipelines in the project")
