@@ -42,7 +42,7 @@ parser.add_argument('--token-file', dest="token_file", type=str, default="./toke
                     help='Specify a token file.')
 
 parser.add_argument('--exporter-mode', dest="exporter_mode", action='store_true', default=False,
-                    help='export Prometheus metrics on 9000 port')
+                    help='export Prometheus metrics at 9000 port')
 
 args = parser.parse_args()
 

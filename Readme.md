@@ -3,7 +3,7 @@
 **The script works only in Linux environment.**
 **Before usage install the GitLab library:** 
 ```commandline
-# pip install python-gitlab
+# pip install python-gitlab prometheus_client 
 ```
 
 ## Overview
@@ -17,9 +17,9 @@ Usage:
 
 `./pipelineCheck [OPTIONS]`
 
-`--gitlab_host=` - Specify your GitLab host. Default value - localhost
+`--gitlab-host=` - Specify your GitLab host. Default value - localhost
 
-`--project_name=` - Specify your project name.
+`--project-name=` - Specify your project name.
 
 `--token=`- Set token
 
@@ -27,9 +27,11 @@ Usage:
 
 `--trigger-failed` - Trigger all failed jobs in the last pipelines
 
-`--duration_limit=` - Any running job will be considered slow if it exceeds this limit. Default value - 600 seconds.
+`--duration-limit=` - Any running job will be considered slow if it exceeds this limit. Default value - 600 seconds.
 
 `--fetch-logs` - Get logs from all failed jobs in the last pipelines. They will be stored in files of a current directory
+
+'--exporter-mode' - export Prometheus metrics at 9000 port
 
 ## Expected behavior ##
 
