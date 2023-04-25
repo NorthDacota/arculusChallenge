@@ -33,6 +33,18 @@ Usage:
 
 '--exporter-mode' - export Prometheus metrics at 9000 port
 
+### Available metrics (Gauge type):
+
+`gitlab_last_pipeline_in_branch` - the last one pipeline in each branch of a project
+
+`gitlab_job_of_last_pipelines` - jobs of the last one pipeline in each branch of a project
+
+`gitlab_job_of_last_pipelines_duration` - a duration of jobs of the last one pipeline in each branch of a project in seconds
+
+`gitlab_connection_established` - a status of a connection with a Gitlab host
+
+Alert example:
+![img_1.png](img_1.png)
 ## Expected behavior ##
 
 The tool checks one last pipeline of each branch in a specified project. If there are no parameters default will be used. If it doesn't find any problems only a short statistic will be given.
