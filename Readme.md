@@ -43,7 +43,7 @@ Usage:
 
 `gitlab_connection_established` - a status of a connection with a Gitlab host
 
-Alert example:
+Alert example: 
 ![img_1.png](img_1.png)
 ## Expected behavior ##
 
