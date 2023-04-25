@@ -56,13 +56,27 @@ def get_project():
             print(f'Unable to get token from file.. Use --token or create token_file. Error: {e}')
             exit(1)
     # Connect to GitLab
-    try:
-        gl = gitlab.Gitlab(args.gitlab_host, private_token=args.token)
-        my_project_data = gl.projects.get(args.project_name)
-    except Exception as e:
-        print(f"I can't connect to the gitlab or get access to the project. "
-              f"Check \"--gitlab-host\", \"--project-name\" and \"--token\" params. Error:\n {e}")
-        sys.exit(1)
+    if not args.exporter_mode:
+        try:
+            gl = gitlab.Gitlab(args.gitlab_host, private_token=args.token)
+            my_project_data = gl.projects.get(args.project_name)
+        except Exception as e:
+            print(f"I can't connect to the gitlab or get access to the project. "
+                  f"Check \"--gitlab-host\", \"--project-name\" and \"--token\" params. Error:\n {e}")
+            sys.exit(1)
+    else:
+        while True:
+            try:
+                gl = gitlab.Gitlab(args.gitlab_host, private_token=args.token)
+                my_project_data = gl.projects.get(args.project_name)
+            except Exception as e:
+                print(f"I can't connect to the gitlab or get access to the project. "
+                      f"Check \"--gitlab-host\", \"--project-name\" and \"--token\" params. Error:\n {e}"
+                      f"Keep trying...\n")
+                connection_gitlab_monitor.labels(host=args.gitlab_host).set(0)
+                time.sleep(10)
+            else:
+                connection_gitlab_monitor.labels(host=args.gitlab_host).set(1)
     # Check if the project is empty
     if len(my_project_data.pipelines.list(get_all=True)) == 0:
         print("There are no pipelines in the project")
@@ -167,6 +181,9 @@ def check_pipelines(pipelines):
                 if args.exporter_mode:
                     job_metric.labels(name=job.name, id=job.id, status=job.status, duration=job.attributes['duration'],
                                       stage=job.stage, pipeline=job.pipeline["id"]).set(1)
+                    job_duration.labels(name=job.name, id=job.id, status=job.status, stage=job.stage,
+                                        pipeline=job.pipeline["id"]).set(( job.attributes['duration'] or 0))
+
 
             if args.trigger_failed:
                 pipeline.retry()
@@ -179,6 +196,11 @@ if args.exporter_mode:
                              ["id", "status", "branch", "project"])
     job_metric = Gauge('gitlab_job_of_last_pipelines', 'shows only last jobs. Gaps are possible',
                              ["name", "id", "status", "duration", "stage", "pipeline"])
+    job_duration = Gauge('gitlab_job_of_last_pipelines_duration', 'duration is seconds',
+                             ["name", "id", "status", "stage", "pipeline"])
+    connection_gitlab_monitor = Gauge('gitlab_connection_established',
+                                      'equal to 1 if the connection is established successfully', ["host"])
+
     start_http_server(9000)
     print("Metrics are available at 9000 port...")
 
@@ -191,4 +213,4 @@ else:
     my_project = get_project()
     pipelines_data = get_project().pipelines.list(get_all=True)
     check_pipelines(pipelines_data)
-    exit(1)
+    exit(0)
