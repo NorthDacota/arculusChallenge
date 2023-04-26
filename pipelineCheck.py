@@ -85,14 +85,26 @@ def get_project():
     return my_project_data
 
 
+def issue_existed_id(title):
+    issues = my_project.issues.list(state='opened', get_all=True)
+    for issue in issues:
+        if issue.title == title:
+            return issue.id
+        else:
+            continue
+
+
 # Send an issue in GitLab
 # Next step - the func can duplicate issues. I need to fix it.
 def report_problem(message, description):
     if args.report_flag:
         title = 'Job ' + str(message)
-        report_to_project = my_project.issues.create({'title': title, 'description': description})
-        print("Problem has been reported with the title: \n" + title)
-
+        if issue_existed_id(title) == '':
+            my_project.issues.create({'title': title, 'description': description})
+            print("Problem has been reported with the title: \n" + title)
+        else:
+            if not args.exporter_mode:
+                print("The issue already exists")
 
 # Print description of a job
 def print_job_stat(job):
@@ -152,9 +164,8 @@ def slow_jobs_handler(job, pending=False):
         job_status_for_message = " too slow"
     print("    The job is",job_status_for_message,': ', str(job.attributes[duration_attribute]) + "sec")
     get_trace(job.id)
-    message = str(job.name) + ' at ' + str(job.stage) + " stage is" +\
-              job_status_for_message + ". Duration: " + str(job.attributes[duration_attribute])
-    description = str(job.id) + " " + job.attributes['web_url']
+    message = str(job.name) + ' at ' + str(job.stage) + " stage is" + job_status_for_message
+    description = str(job.id) + " " + job.attributes['web_url'] + ". Duration: " + str(job.attributes[duration_attribute])
     report_problem(message, description)
 
 
