@@ -106,6 +106,7 @@ def report_problem(message, description):
             if not args.exporter_mode:
                 print("The issue already exists")
 
+
 # Print description of a job
 def print_job_stat(job):
     if not args.exporter_mode:
@@ -133,13 +134,13 @@ def escape_ansi(line):
 # Show the last five strings of a log. Save it in files if the fetch_logs flag was set.
 def get_trace(id):
     if not args.exporter_mode:
-        thejob = my_project.jobs.get(id)
-        log_data = escape_ansi(thejob.trace().decode("ascii"))
+        the_job = my_project.jobs.get(id)
+        log_data = escape_ansi(the_job.trace().decode("ascii"))
         last_log = log_data.split('\n')
         separator = "\n    "
         print("    TRACE:\n    ", separator.join(last_log[-5:]))
         if args.fetch_logs:
-            filename = str(thejob.id) + '.log'
+            filename = str(the_job.id) + '.log'
             logfile = open(filename, "w")
             logfile.write(log_data)
 
@@ -162,62 +163,58 @@ def slow_jobs_handler(job, pending=False):
     else:
         duration_attribute = 'duration'
         job_status_for_message = " too slow"
-    print("    The job is",job_status_for_message,': ', str(job.attributes[duration_attribute]) + "sec")
+    print("    The job is", job_status_for_message, ': ', str(job.attributes[duration_attribute]) + "sec")
     get_trace(job.id)
     message = str(job.name) + ' at ' + str(job.stage) + " stage is" + job_status_for_message
     description = str(job.id) + " " + job.attributes['web_url'] + ". Duration: " + str(job.attributes[duration_attribute])
     report_problem(message, description)
 
 
-def check_if_branch_doesnt_exist(pipeline):
-    try:
-        branch = my_project.branches.get(pipeline.attributes['ref'])
-    except Exception:
-        return pipeline.attributes['ref']
-    else:
-        if branch.merged:
-            return branch.name
+def get_branch_list():
+    actual_branches = []
+    branches = my_project.branches.list(get_all=True)
+    for branch in branches:
+        if not branch.merged:
+            actual_branches.append(branch.name)
+    return actual_branches
 
 
-# It takes only the last pipeline in each branch and if the pipeline has a problem makes a report
-def check_pipelines(pipelines):
-    # check if it has already printed last branch pipeline that way
-    skip_the_branches = []
-    for pipeline in pipelines:
-        # don't handle the pipeline if the branch doesn't exist anymore
-        skip_the_branches.append(check_if_branch_doesnt_exist(pipeline))
-        if pipeline.attributes['ref'] not in skip_the_branches:
-            # don't handle the pipeline if it is not the last one
-            skip_the_branches.append(pipeline.attributes['ref'])
-            # add the pipeline to the gitlab_last_pipeline_in_branch metric with unique labels
-            if args.exporter_mode:
-                pipeline_metrics.labels(id=pipeline.id, status=pipeline.status, branch=pipeline.attributes['ref'],
-                                        project=my_project.name).set(1)
-            print_pipe_stat(pipeline)
-
-            jobs = pipeline.jobs.list()
-            for job in jobs:
-                if job.status == "failed":
-                    failed_jobs_handler(job)
-                if job.status == "running" and job.attributes['duration'] <= args.duration_limit:
-                    print_job_stat(job)
-                if job.status == "running" and job.attributes['duration'] >= args.duration_limit:
-                    slow_jobs_handler(job)
-                if job.status == "pending" and job.attributes['queued_duration'] >= args.duration_limit:
-                    slow_jobs_handler(job, pending=True)
-                if args.exporter_mode:
-                    job_metric.labels(name=job.name, id=job.id, status=job.status, duration=job.attributes['duration'],
-                                      stage=job.stage, pipeline=job.pipeline["id"]).set(1)
-                    job_duration.labels(name=job.name, id=job.id, status=job.status, stage=job.stage,
-                                        pipeline=job.pipeline["id"]).set(( job.attributes['duration'] or 0))
-
-
-            if args.trigger_failed:
-                pipeline.retry()
+def pipeline_handler(pipeline):
     if args.exporter_mode:
-        time.sleep(3)
+        pipeline_metrics.labels(id=pipeline.id, status=pipeline.status, branch=pipeline.attributes['ref'],
+                                project=my_project.name).set(1)
+    print_pipe_stat(pipeline)
 
-# what if I take a list of open branches first and then check their pipelines?
+
+def all_jobs_handler(pipeline):
+    jobs = pipeline.jobs.list(get_all=True)
+    for job in jobs:
+        if job.status == "failed":
+            failed_jobs_handler(job)
+        if job.status == "running" and job.attributes['duration'] <= args.duration_limit:
+            print_job_stat(job)
+        if job.status == "running" and job.attributes['duration'] >= args.duration_limit:
+            slow_jobs_handler(job)
+        if job.status == "pending" and job.attributes['queued_duration'] >= args.duration_limit:
+            slow_jobs_handler(job, pending=True)
+        if args.exporter_mode:
+            job_metric.labels(name=job.name, id=job.id, status=job.status, duration=job.attributes['duration'],
+                              stage=job.stage, pipeline=job.pipeline["id"]).set(1)
+            job_duration.labels(name=job.name, id=job.id, status=job.status, stage=job.stage,
+                                pipeline=job.pipeline["id"]).set((job.attributes['duration'] or 0))
+    if args.trigger_failed:
+        pipeline.retry()
+
+
+def check_pipelines():
+    branch_list = get_branch_list()
+    for branch in branch_list:
+        if my_project.pipelines.list(ref=branch, get_all=True):
+            the_last_pipeline = my_project.pipelines.list(ref=branch, get_all=True)[0]
+            pipeline_handler(the_last_pipeline)
+            all_jobs_handler(the_last_pipeline)
+        if args.exporter_mode:
+            time.sleep(3)
 
 
 if args.exporter_mode:
@@ -235,11 +232,9 @@ if args.exporter_mode:
 
     while True:
         my_project = get_project()
-        pipelines_data = get_project().pipelines.list(get_all=True)
         pipeline_metrics.clear()
-        check_pipelines(pipelines_data)
+        check_pipelines()
 else:
     my_project = get_project()
-    pipelines_data = get_project().pipelines.list(get_all=True)
-    check_pipelines(pipelines_data)
+    check_pipelines()
     exit(0)
