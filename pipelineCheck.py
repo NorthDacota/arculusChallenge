@@ -169,12 +169,27 @@ def slow_jobs_handler(job, pending=False):
     report_problem(message, description)
 
 
+def check_if_branch_doesnt_exist(pipeline):
+    try:
+        branch = my_project.branches.get(pipeline.attributes['ref'])
+    except Exception:
+        return pipeline.attributes['ref']
+    else:
+        if branch.merged:
+            return branch.name
+
+
 # It takes only the last pipeline in each branch and if the pipeline has a problem makes a report
 def check_pipelines(pipelines):
-    last_pipelines = []
+    # check if it has already printed last branch pipeline that way
+    skip_the_branches = []
     for pipeline in pipelines:
-        if pipeline.attributes['ref'] not in last_pipelines:
-            last_pipelines.append(pipeline.attributes['ref'])
+        # don't handle the pipeline if the branch doesn't exist anymore
+        skip_the_branches.append(check_if_branch_doesnt_exist(pipeline))
+        if pipeline.attributes['ref'] not in skip_the_branches:
+            # don't handle the pipeline if it is not the last one
+            skip_the_branches.append(pipeline.attributes['ref'])
+            # add the pipeline to the gitlab_last_pipeline_in_branch metric with unique labels
             if args.exporter_mode:
                 pipeline_metrics.labels(id=pipeline.id, status=pipeline.status, branch=pipeline.attributes['ref'],
                                         project=my_project.name).set(1)
@@ -201,6 +216,8 @@ def check_pipelines(pipelines):
                 pipeline.retry()
     if args.exporter_mode:
         time.sleep(3)
+
+# what if I take a list of open branches first and then check their pipelines?
 
 
 if args.exporter_mode:
