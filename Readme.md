@@ -31,7 +31,7 @@ Usage:
 
 `--fetch-logs` - Get logs from all failed jobs in the last pipelines. They will be stored in files of a current directory
 
-'--exporter-mode' - export Prometheus metrics at 9000 port
+`--exporter-mode` - export Prometheus metrics at 9000 port
 
 ### Available metrics (Gauge type):
 
@@ -44,7 +44,7 @@ Usage:
 `gitlab_connection_established` - a status of a connection with a Gitlab host
 
 Alert example: 
-![img_1.png](img_1.png)
+![img_1.png](img/img_1.png)
 ## Expected behavior ##
 
 The tool checks one last pipeline of each branch in a specified project. If there are no parameters default will be used. If it doesn't find any problems only a short statistic will be given.
@@ -158,7 +158,7 @@ Pipeline ID:  17
 STATUS:  success
 ```
 The new issue
-![img.png](img.png)
+![img.png](img/img.png)
 
 Trigger failed jobs ( we got a new id in the second run):
 ```commandline
